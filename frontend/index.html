@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Warangal Tourist Review Insights</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">W</div>
+      <div><div class="brand-title">Warangal</div><div class="brand-sub">Tourist Review Insights</div></div>
+    </div>
+    <nav id="nav">
+      <a href="#/dashboard" data-view="dashboard">Dashboard</a>
+      <a href="#/attractions" data-view="attractions">Attractions</a>
+      <a href="#/analyze" data-view="analyze">Analyse a review</a>
+      <a href="#/feedback" data-view="feedback">Submit feedback</a>
+      <a href="#/reviews" data-view="reviews">All reviews</a>
+      <a href="#/upload" data-view="upload">Bulk upload</a>
+      <a href="#/model" data-view="model">Model performance</a>
+    </nav>
+    <p class="sidebar-foot">NLP-based sentiment and feedback analysis for Warangal tourism</p>
+  </aside>
+
+  <main>
+    <div id="toast" class="toast" hidden></div>
+
+    <!-- Dashboard -->
+    <section class="view" id="view-dashboard" hidden>
+      <header class="page-head">
+        <div><h1>Tourism Sentiment Dashboard</h1><p class="muted">What visitors say about Warangal's attractions</p></div>
+        <form class="filters" id="dashFilters">
+          <select name="attraction_id" data-attractions><option value="">All attractions</option></select>
+          <select name="visitor_type" data-visitors><option value="">All visitors</option></select>
+          <input type="date" name="date_from" aria-label="From date">
+          <input type="date" name="date_to" aria-label="To date">
+          <button type="reset" class="btn ghost">Reset</button>
+        </form>
+      </header>
+      <div class="kpis" id="dashKpis"></div>
+      <div class="grid two">
+        <div class="card"><h3>Sentiment distribution</h3><div class="chart-box"><canvas id="chartDist"></canvas></div></div>
+        <div class="card"><h3>Attractions ranked by net sentiment</h3><div class="chart-box"><canvas id="chartRank"></canvas></div></div>
+      </div>
+      <div class="card"><h3>Monthly review trend</h3><div class="chart-box wide"><canvas id="chartTrend"></canvas></div></div>
+      <div class="grid two">
+        <div class="card"><h3>Aspect sentiment</h3><p class="muted small">How often each part of the visit is praised or criticised</p><div class="chart-box tall"><canvas id="chartAspects"></canvas></div></div>
+        <div class="card"><h3>What drives sentiment</h3>
+          <h4 class="pos-text">Positive keywords</h4><div class="cloud" id="kwPos"></div>
+          <h4 class="neg-text">Negative keywords</h4><div class="cloud" id="kwNeg"></div>
+        </div>
+      </div>
+      <div class="card"><h3>Attraction × aspect heatmap</h3><p class="muted small">Net sentiment from −100 (all negative) to +100 (all positive). Empty cells have no mentions.</p><div class="table-wrap" id="heatmap"></div></div>
+      <div class="card"><h3>Rating vs text mismatches</h3><p class="muted small">Reviews where the star rating disagrees with the written sentiment: worth a manual check.</p><div id="mismatches"></div></div>
+    </section>
+
+    <!-- Attractions -->
+    <section class="view" id="view-attractions" hidden>
+      <header class="page-head"><div><h1>Attractions</h1><p class="muted">Insights and action points for each tourist spot</p></div></header>
+      <div class="attraction-grid" id="attractionGrid"></div>
+    </section>
+
+    <section class="view" id="view-attraction" hidden>
+      <a href="#/attractions" class="back">← All attractions</a>
+      <div id="attractionDetail"></div>
+    </section>
+
+    <!-- Analyse -->
+    <section class="view" id="view-analyze" hidden>
+      <header class="page-head"><div><h1>Analyse a review</h1><p class="muted">Try the NLP pipeline on any text. Nothing is saved.</p></div></header>
+      <div class="card">
+        <textarea id="analyzeText" rows="5" maxlength="5000" placeholder="Type or paste a tourist review…"></textarea>
+        <div class="row between wrap">
+          <div class="samples" id="samples"></div>
+          <button class="btn" id="analyzeBtn">Analyse</button>
+        </div>
+      </div>
+      <div id="analyzeResult"></div>
+    </section>
+
+    <!-- Feedback form -->
+    <section class="view" id="view-feedback" hidden>
+      <header class="page-head"><div><h1>Share your visit</h1><p class="muted">Your feedback helps improve tourism in Warangal</p></div></header>
+      <form class="card form" id="feedbackForm">
+        <div class="grid two">
+          <label>Attraction<select name="attraction_id" data-attractions required><option value="">Choose a place</option></select></label>
+          <label>Your name (optional)<input name="reviewer_name" maxlength="60"></label>
+          <label>Visited as<select name="visitor_type" data-visitors required></select></label>
+          <label>Visit date<input type="date" name="visit_date"></label>
+        </div>
+        <fieldset class="stars"><legend>Rating</legend>
+          <div id="starInput"></div>
+        </fieldset>
+        <label>Your review<textarea name="text" rows="5" minlength="10" maxlength="3000" required placeholder="What did you like? What should be improved?"></textarea></label>
+        <button class="btn" type="submit">Submit feedback</button>
+      </form>
+      <div id="feedbackResult"></div>
+    </section>
+
+    <!-- Reviews -->
+    <section class="view" id="view-reviews" hidden>
+      <header class="page-head">
+        <div><h1>All reviews</h1><p class="muted" id="reviewCount"></p></div>
+        <a class="btn ghost" id="exportLink" href="/api/export.csv">Export CSV</a>
+      </header>
+      <form class="filters card" id="reviewFilters">
+        <input type="search" name="q" placeholder="Search text…" maxlength="100">
+        <select name="attraction_id" data-attractions><option value="">All attractions</option></select>
+        <select name="sentiment"><option value="">Any sentiment</option><option value="positive">Positive</option><option value="neutral">Neutral</option><option value="negative">Negative</option></select>
+        <select name="aspect" data-aspects><option value="">Any aspect</option></select>
+        <select name="sort"><option value="newest">Newest</option><option value="oldest">Oldest</option><option value="most_negative">Most negative</option><option value="most_positive">Most positive</option></select>
+      </form>
+      <div id="reviewList"></div>
+      <div class="row center" id="pager"></div>
+    </section>
+
+    <!-- Upload -->
+    <section class="view" id="view-upload" hidden>
+      <header class="page-head"><div><h1>Bulk upload</h1><p class="muted">Import reviews collected from surveys, QR feedback forms or other sources</p></div></header>
+      <div class="card">
+        <p>Upload a <b>.csv</b> file (UTF-8, max 5 MB). Required columns: <code>attraction</code>, <code>text</code>. Optional: <code>rating</code> (1–5), <code>visit_date</code> (YYYY-MM-DD), <code>visitor_type</code>, <code>reviewer_name</code>.</p>
+        <p class="muted small">Attraction must match a name such as “Ramappa Temple” or a slug such as “ramappa-temple”. Visitor types: family, friends, solo, couple, school_trip, foreign_tourist.</p>
+        <div class="row wrap">
+          <input type="file" id="csvFile" accept=".csv,text/csv">
+          <button class="btn" id="uploadBtn">Upload and analyse</button>
+          <button class="btn ghost" id="templateBtn" type="button">Download template</button>
+        </div>
+      </div>
+      <div id="uploadResult"></div>
+    </section>
+
+    <!-- Model -->
+    <section class="view" id="view-model" hidden>
+      <header class="page-head"><div><h1>Model performance</h1><p class="muted">How well the sentiment models agree with human labels</p></div></header>
+      <div class="card pipeline" id="pipelineCard"></div>
+      <div id="modelResult"><p class="muted">Evaluating models…</p></div>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
