@@ -89,7 +89,12 @@ async function init() {
 function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
 
 function route() {
-  const [view, id] = (location.hash.replace(/^#\//, "") || "dashboard").split("/");
+  const [path, search] = (location.hash.replace(/^#\//, "") || "dashboard").split("?");
+  const [view, id] = path.split("/");
+  if (view === "analyze" && search) {           // #/analyze?text=... opens the analyser pre-filled
+    const text = new URLSearchParams(search).get("text");
+    if (text) { $("#analyzeText").value = text.slice(0, 5000); setTimeout(runAnalysis); }
+  }
   const name = view === "attractions" && id ? "attraction" : view;
   if (!$("#view-" + name)) { location.hash = "#/dashboard"; return; }
   $$(".view").forEach((v) => (v.hidden = v.id !== "view-" + name));
